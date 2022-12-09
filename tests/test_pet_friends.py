@@ -1,5 +1,3 @@
-import os
-import pytest
 from QA_Automation.api import PetFriends
 from QA_Automation.settings import valid_email, valid_password
 
@@ -38,7 +36,15 @@ def test_post_new_pet_simple(name='Tom', animal_type='cat', age='5'):
 def test_post_new_pet(name='Lady', animal_type='dog', age='7', pet_photo='images/img.png'):
     """Тест на успешность добавления нового питомца с фото. Проверяем ответ по параметру name"""
 
-    pet_photo = os.path.join(os.path.dirname(__file__), pet_photo)
+    _, auth_key = pf.get_api_key(valid_email, valid_password)
+    status, result = pf.post_new_pet(auth_key, name, animal_type, age, pet_photo)
+    assert status == 200
+    assert result['name'] == name
+
+
+def test_post_new_pet_with_jpeg(name='Кронк', animal_type='Собака', age='3', pet_photo='images/bas.jpeg'):
+    """Тест на успешность добавления фото формата jpeg"""
+
     _, auth_key = pf.get_api_key(valid_email, valid_password)
     status, result = pf.post_new_pet(auth_key, name, animal_type, age, pet_photo)
     assert status == 200
@@ -91,3 +97,60 @@ def test_add_photo_of_pet(pet_photo='images/img.png'):
         assert pet_photo is not None
     else:
         raise Exception("There is no my pets")
+
+def test_add_photo_of_pet_with_jpg(pet_photo='images/cat.jpg'):
+    """Проверка возможности обновления фото животного в формате jpg"""
+
+    _, auth_key = pf.get_api_key(valid_email, valid_password)
+    _, my_pets = pf.get_list_of_pets(auth_key, "my_pets")
+
+    if len(my_pets['pets']) > 0:
+        status, result = pf.post_add_photo_of_pet(auth_key, my_pets['pets'][0]['id'], pet_photo)
+        assert status == 200
+        assert pet_photo is not None
+    else:
+        raise Exception("There is no my pets")
+
+"""Негативные проверки"""
+
+def test_get_api_key_for_invalid_email(email='test.mail.com', password=valid_password):
+    """Проверка статуса запроса api-ключа при невалидном email"""
+
+    status, result = pf.get_api_key(email, password)
+    assert status == 403
+
+def test_get_api_key_for_wrong_password(email=valid_email, password='654f5678'):
+    """Проверка статуса запроса api-ключа при неверном пароле"""
+
+    status, result = pf.get_api_key(email, password)
+    assert status == 403
+
+def test_post_new_pet_with_invalid_data(name=332, animal_type=26, age='два'):
+    """Проверка возможности добавления нового питомца с числами вместо имени и породы и с текстом в поле возраста"""
+
+    _, auth_key = pf.get_api_key(valid_email, valid_password)
+    status, result = pf.post_create_pet_simple(auth_key, name, animal_type, age)
+    assert status == 400
+    assert 'id' not in result
+
+
+def test_post_new_pet_simple_without_age(name='Tom', animal_type='cat'):
+    """Проверка добавления питомца без третьего параметра"""
+
+    _, auth_key = pf.get_api_key(valid_email, valid_password)
+    status, result = pf.post_create_pet_simple(auth_key, name, animal_type)
+    assert status != 200
+
+def test_post_new_pet_simple_with_photo(name='Tom', animal_type='cat', age='5', pet_photo='images/img.png'):
+    """Проверка статус-кода при добавление лишнего параметра"""
+
+    _, auth_key = pf.get_api_key(valid_email, valid_password)
+    status, result = pf.post_create_pet_simple(auth_key, name, animal_type, age, pet_photo)
+    assert status != 200
+
+def test_post_new_pet_without_photo(name='Кронк', animal_type='Собака', age='3', pet_photo=''):
+    """Тест на успешность добавления питомца без фото"""
+
+    _, auth_key = pf.get_api_key(valid_email, valid_password)
+    status, result = pf.post_new_pet(auth_key, name, animal_type, age, pet_photo)
+    assert status != 200
